@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d12">
+<title>T's County Collectibles</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0d12;--card:#151923;--line:#2b3140;--text:#f5f7fb;--muted:#a9b0bf;--accent:#b3132b;--good:#42c77a}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{padding:22px 18px;background:linear-gradient(135deg,#350711,#10141c);border-bottom:1px solid var(--line)}h1{margin:0;font-size:26px}header p{margin:5px 0 0;color:var(--muted)}
+main{max-width:900px;margin:auto;padding:16px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat,.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:21px;margin-top:4px}.stat span,.muted{color:var(--muted);font-size:13px}
+.actions{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}button{border:0;border-radius:10px;padding:12px 15px;font-weight:700;background:var(--accent);color:white;min-height:44px}button.secondary{background:#252b38}.filters{display:grid;grid-template-columns:1fr 150px;gap:10px;margin-bottom:14px}
+input,select,textarea{width:100%;background:#0f131b;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:16px}
+.cardrow{padding:14px 0;border-bottom:1px solid var(--line)}.cardrow:last-child{border-bottom:0}.rowtop{display:flex;justify-content:space-between;gap:10px}.tag{font-size:12px;padding:4px 8px;border-radius:999px;background:#272d3a;white-space:nowrap}.money{color:var(--good);font-weight:700}
+dialog{width:min(92%,560px);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px}dialog::backdrop{background:#000a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid .wide{grid-column:1/-1}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.empty{text-align:center;color:var(--muted);padding:28px 10px}@media(max-width:520px){.stats{grid-template-columns:1fr}.filters,.grid{grid-template-columns:1fr}.grid .wide{grid-column:auto}}
+</style></head>
+<body>
+<header><h1>T's County Collectibles</h1><p>Card inventory • PC • For Sale • Grading</p></header>
+<main>
+<section class="stats"><div class="stat"><span>Cards</span><b id="count">0</b></div><div class="stat"><span>Total Cost</span><b id="cost">$0</b></div><div class="stat"><span>Estimated Value</span><b id="value">$0</b></div></section>
+<div class="actions"><button id="add">+ Add Card</button><button class="secondary" id="export">Export Backup</button></div>
+<div class="filters"><input id="search" placeholder="Search player, set, parallel…"><select id="filter"><option>All</option><option>PC</option><option>For Sale</option><option>Grading</option><option>Sold</option></select></div>
+<section class="panel"><div id="list"></div></section>
+</main>
+<dialog id="dlg"><form id="form"><h2 style="margin-top:0">Add Card</h2><div class="grid">
+<input name="player" placeholder="Player" required><input name="year" placeholder="Year">
+<input name="set" placeholder="Set / Product"><input name="parallel" placeholder="Parallel">
+<input name="numbered" placeholder="Numbered (ex. 1/10)"><input name="grade" placeholder="Grade (ex. PSA 10)">
+<select name="status"><option>PC</option><option>For Sale</option><option>Grading</option><option>Sold</option></select>
+<input name="cost" type="number" min="0" step=".01" placeholder="Cost">
+<input name="value" type="number" min="0" step=".01" placeholder="Estimated value"><textarea class="wide" name="notes" placeholder="Notes"></textarea>
+</div><div class="dialog-actions"><button type="button" class="secondary" id="cancel">Cancel</button><button>Save Card</button></div></form></dialog>
+<script>
+const KEY="tscc-cards-v1";let cards=JSON.parse(localStorage.getItem(KEY)||"[]");
+const $=s=>document.querySelector(s),money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n||0);
+function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function save(){localStorage.setItem(KEY,JSON.stringify(cards));render()}
+function render(){
+ const q=$("#search").value.toLowerCase(),f=$("#filter").value;
+ const shown=cards.filter(c=>(f==="All"||c.status===f)&&JSON.stringify(c).toLowerCase().includes(q));
+ $("#count").textContent=cards.length;
+ $("#cost").textContent=money(cards.reduce((a,c)=>a+(+c.cost||0),0));
+ $("#value").textContent=money(cards.reduce((a,c)=>a+(+c.value||0),0));
+ $("#list").innerHTML=shown.length?shown.map(c=>`<div class="cardrow"><div class="rowtop"><div><b>${esc(c.player)}</b><div class="muted">${esc([c.year,c.set,c.parallel,c.numbered,c.grade].filter(Boolean).join(" • "))}</div></div><span class="tag">${esc(c.status)}</span></div><div style="margin-top:8px">Cost: ${money(+c.cost)} &nbsp; <span class="money">Value: ${money(+c.value)}</span></div>${c.notes?`<div class="muted" style="margin-top:6px">${esc(c.notes)}</div>`:""}<button class="secondary del" data-id="${c.id}" style="margin-top:10px">Delete</button></div>`).join(""):'<div class="empty">No cards yet. Tap “Add Card” to start your inventory.</div>';
+ document.querySelectorAll(".del").forEach(b=>b.addEventListener("click",()=>{if(confirm("Delete this card?")){cards=cards.filter(c=>c.id!==b.dataset.id);save()}}))
+}
+$("#add").onclick=()=>$("#dlg").showModal();$("#cancel").onclick=()=>$("#dlg").close();$("#search").oninput=render;$("#filter").onchange=render;
+$("#form").onsubmit=e=>{e.preventDefault();const o=Object.fromEntries(new FormData(e.target));o.id=crypto.randomUUID?crypto.randomUUID():Date.now()+"";cards.unshift(o);e.target.reset();$("#dlg").close();save()};
+$("#export").onclick=()=>{const blob=new Blob([JSON.stringify(cards,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ts-county-collectibles-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+render();
+</script></body></html>
